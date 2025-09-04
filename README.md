@@ -1,5 +1,5 @@
-# js13k-2025
-Entry for JS13K 2025
+# Poker Mysterio
+Entry for JS13K game competition 2025. Theme: Black Cat
 
 ## Background
 They say crossing paths with a black cat is bad luck. Poker Mysterio disagrees. In a smoky, comic‑book alley of neon signs and stacked decks, a mischievous black cat pads onto the felt and starts dealing fate with a flick of its tail. Every superstition you’ve heard is here—only this time, the cat’s on your side… mostly.
