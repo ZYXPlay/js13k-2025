@@ -3,13 +3,28 @@ import Player from './player';
 import { zzfx } from './zzfx';
 
 const player = new Player();
+let genDone = false;
 player.init(song);
-player.generate();
-const wave = player.createWave();
+console.log('Start generating music...');
+setInterval(function () {
+  if (genDone) {
+    return;
+  }
+
+  genDone = player.generate() >= 1;
+
+  if (genDone) {
+    const wave = player.createWave();
+    audio.src = URL.createObjectURL(new Blob([wave], {type: "audio/wav"}));
+    console.log('Music generated and loaded.');
+  }
+}, 0);
+
+
+// player.generate();
 const audio = document.createElement("audio");
 audio.autoplay = true;
 audio.loop = true;
-audio.src = URL.createObjectURL(new Blob([wave], {type: "audio/wav"}));
 const powerUp = [,,355,.03,.23,.19,1,2.1,6,-3,,,,,14,,,.83,.22]; // Powerup 8
 const deal = [,,341,.04,.04,.09,,2,,68,,,,.4,,,,.71]; // Deal 8
 const playCardFx = [,,280,.05,.05,.07,,2.6,,9,,,,.5,,,,.9,.01];
@@ -733,15 +748,12 @@ function ensureAuxTitle() {
     auxTitle.y = Math.max(4, catSprite ? catSprite.y - 18 : 12);
     return;
   }
-  const titleText = 'POKER MYSTERIO';
-  const scale = 2; // pixel font scale
-  const charW = 6 * scale; // 12
 
   auxTitle = createAnimatable({
     x: 0, // computed in render for centering
     y: Math.max(4, catSprite ? catSprite.y - 18 : 12),
-    text: titleText,
-    scale: 1,
+    text: 'POKER MYSTERIO',
+    scale: 3,
     alpha: 1,
     rotation: 0,
     clickable: false,
@@ -750,15 +762,11 @@ function ensureAuxTitle() {
     render: (self) => {
       const rctx = self.context || ctxAux;
       // compute total width (every char counts as one cell)
-      const totalW = self.text.length * charW;
-      let x = Math.floor((canvasAux.width - totalW) / 2);
-      const y = self.y;
-      for (let i = 0; i < self.text.length; i++) {
-        const ch = self.text[i];
-        if (ch !== ' ') {
-          drawChar(ch, x, y, '#ff0', scale, rctx);
-        }
-        x += charW;
+      drawText(self.text, rctx.canvas.width / 2, self.y, '#ff0', self.scale, 'center', rctx);
+      if(gameState === 'title') {
+        drawText('Game by Vonloxx', rctx.canvas.width / 2, self.y + 130, '#fff', 2, 'center', rctx);
+        drawText('Music by Esa Ruoho', rctx.canvas.width / 2, self.y + 150, '#fff', 2, 'center', rctx);
+        drawText('Tap to start', rctx.canvas.width / 2, self.y + 180, '#fff', 2, 'center', rctx);
       }
     }
   });
@@ -774,7 +782,7 @@ function ensureAuxScore() {
   }
   auxScore = createAnimatable({
     x: 0,
-    y: Math.min(canvasAux.height - 10, catSprite ? catSprite.y + catSprite.h + 8 : canvasAux.height - 20),
+    y: Math.min(canvasAux.height - 10, catSprite ? catSprite.y + catSprite.h + 18 : canvasAux.height - 20),
     alpha: 1,
     clickable: false,
     context: ctxAux,
@@ -782,10 +790,7 @@ function ensureAuxScore() {
     update: (self, dt) => { self.updateAnimations(dt); },
     render: (self) => {
       const rctx = self.context || ctxAux;
-      const text = `SCORE ${score}`;
-      const x = Math.floor(canvasAux.width / 2);
-      const y = self.y;
-      drawText(text, x, y, '#fff', 2, 'center', rctx);
+      drawText(`SCORE ${score}`, Math.floor(canvasAux.width / 2), self.y, '#fff', 2, 'center', rctx);
     }
   });
   auxObjects.push(auxScore);
@@ -893,7 +898,7 @@ function performPurr() {
 
 function performHiss() {
   nextScoreMultiplier = 0.8; // -20% on next combo
-  flashText('HISS -20% NEXT', canvas.width/2, deckPosition.y + 80, '#f80');
+  flashText('HISS LESS 20PCT NEXT', canvas.width/2, deckPosition.y + 80, '#f80');
   particleSystem.spawnAt(deckPosition.x + 20, deckPosition.y + 30, 10, { colors: ['#f80','#f44'], speed: 120, life: 900 });
   // Redeal the hand
   dealCards();
@@ -1067,16 +1072,16 @@ const evaluateCombo = () => {
   
   // Show result text
   const textLength = result.name.length * 6;
-  const resultText = createText(canvas.width / 2 - textLength / 2, canvas.height / 2, 
-                               `${result.name}!`, '#ff0', 1);
-  const scoreText = createText(canvas.width / 2 - 40, canvas.height / 2 + 20, 
-                              `+${finalScore}`, '#0f0', 1);
+  const resultText = createText(canvas.width / 2, canvas.height / 2, 
+                               `${result.name}!`, '#ff0', 1, 'left');
+  const scoreText = createText(canvas.width / 2, canvas.height / 2 + 20, 
+                              `+${finalScore}`, '#0f0', 1, 'center');
   
   gameObjects.push(resultText, scoreText);
   
   // Animate result text with removal after fade
   resultText.rotation = Math.PI / 2
-  resultText.scale = 0.1;
+  resultText.scale = 1;
   zzfx(...handFx);
   resultText.scaleTo(3, 500, 'easeOut').rotateTo(0, 500, 'easeOut', obj => {
     setTimeout(() => {
