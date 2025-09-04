@@ -1947,17 +1947,18 @@ resizeCanvases();
 function setupPWA() {
   if (import.meta.env.MODE === 'js13k') return;
   const head = document.head;
+  const base = (import.meta.env.BASE_URL || '/');
   const m = document.createElement('link');
   m.rel = 'manifest';
-  m.href = '/manifest.webmanifest';
+  m.href = base + 'manifest.webmanifest';
   head.appendChild(m);
   const a = document.createElement('link');
   a.rel = 'apple-touch-icon';
-  a.href = '/icons/icon-192.png';
+  a.href = base + 'icons/icon-192.png';
   head.appendChild(a);
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      navigator.serviceWorker.register(base + 'sw.js').catch(()=>{});
     });
   }
 }
