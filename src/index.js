@@ -124,7 +124,7 @@ let suppressNextClick = false;
 const abilityDescriptions = {
   pounce: ['POUNCE', 'Replace a combo card', 'with top deck card.'],
   purr: ['PURR', 'Peek next top deck card.'],
-  hiss: ['HISS', 'Redeal hand. Next combo', '-20% score.'],
+  hiss: ['HISS', 'Redeal hand. Next combo', 'Less 20pct score.'],
   scratch: ['SCRATCH', 'Burn top 3 cards.', 'Next draw favors black.']
 };
 
