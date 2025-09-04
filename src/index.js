@@ -1,3 +1,33 @@
+import song from './song';
+import Player from './player';
+import { zzfx } from './zzfx';
+
+const player = new Player();
+player.init(song);
+player.generate();
+const wave = player.createWave();
+const audio = document.createElement("audio");
+audio.autoplay = true;
+audio.loop = true;
+audio.src = URL.createObjectURL(new Blob([wave], {type: "audio/wav"}));
+const powerUp = [,,355,.03,.23,.19,1,2.1,6,-3,,,,,14,,,.83,.22]; // Powerup 8
+const deal = [,,341,.04,.04,.09,,2,,68,,,,.4,,,,.71]; // Deal 8
+const playCardFx = [,,280,.05,.05,.07,,2.6,,9,,,,.5,,,,.9,.01];
+const clearCardFx = [,,497,.05,.04,.11,1,1.6,,,100,.1,,1,,,,.4,.03];
+const handFx = [,0,261.6256,.02,.2,.08,,1.9,,,350,.07,.22,,,.1,.08,.9,.23];
+const overFx = [1.1,,522,.01,.01,.01,1,4.9,,-36,,,,,,,,.71,.02,,-1073];
+const clickFx = [,,305,.01,.02,.26,1,.5,,,286,.08,,,,,,.93,.01];
+
+const body = document.body;
+body.appendChild(audio);
+function startMusic() {
+  audio.play();
+  body.removeEventListener('click', startMusic);
+  // zzfx(...overFx);
+  // zzfx(...[,,925,.04,.3,.6,1,.3,,6.27,-184,.09,.17]); // Game Over
+}
+body.addEventListener('click', startMusic);
+
 const canvas = document.getElementById('canvas-main');
 const ctx = canvas.getContext('2d');
 // Auxiliary canvas for UI / abilities
@@ -88,8 +118,6 @@ canvas.addEventListener('click', (e) => {
 
 // Pointer-based long-press detection for ability buttons
 let longPressTimer = null;
-let longPressTarget = null;
-let longPressFired = false;
 let pointerDownPos = { x: 0, y: 0 };
 let suppressNextClick = false;
 
@@ -107,29 +135,24 @@ function hitTest(obj, x, y) {
 canvas.addEventListener('pointerdown', (e) => {
   const p = getEventPosInCanvas(e, canvas);
   pointerDownPos = { x: p.x, y: p.y };
-  longPressFired = false;
-  longPressTarget = null;
 });
 
 // Aux canvas: long-press detection for ability buttons
 canvasAux.addEventListener('pointerdown', (e) => {
   const p = getEventPosInCanvas(e, canvasAux);
   pointerDownPos = { x: p.x, y: p.y };
-  longPressFired = false;
 
   const entries = Object.entries(abilityButtons);
   for (const [key, btn] of entries) {
     if (btn && hitTest(btn, p.x, p.y) && abilities[key] > 0 && gameState === 'playing') {
-      longPressTarget = { key, btn };
       longPressTimer = setTimeout(() => {
-        longPressFired = true;
         suppressNextClick = true;
         showAbilityPopup(key);
       }, 550);
       return;
     }
   }
-  longPressTarget = null;
+  
 });
 
 canvasAux.addEventListener('pointermove', (e) => {
@@ -141,7 +164,6 @@ canvasAux.addEventListener('pointermove', (e) => {
     if ((dx*dx + dy*dy) > 36) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
-      longPressTarget = null;
     }
   }
 
@@ -156,6 +178,7 @@ canvasAux.addEventListener('pointermove', (e) => {
     }
     if (hoveredKey) {
       if (!activePopup || !activePopupFromHover || activePopupKind !== hoveredKey) {
+        zzfx(...overFx);
         showAbilityPopup(hoveredKey, true);
       }
     } else if (activePopup && activePopupFromHover) {
@@ -170,7 +193,6 @@ canvasAux.addEventListener('pointermove', (e) => {
       clearTimeout(longPressTimer);
       longPressTimer = null;
     }
-    longPressTarget = null;
     if (type === 'pointerleave' && activePopupFromHover) {
       closeActivePopup();
     }
@@ -200,6 +222,7 @@ canvasAux.addEventListener('click', (e) => {
     if (hitTest(btn, p.x, p.y)) {
       // respect remaining charges
       if (abilities[key] > 0 && typeof btn.onClick === 'function') {
+        zzfx(...clickFx);
         btn.onClick();
       }
       break;
@@ -215,7 +238,7 @@ canvas.addEventListener('pointermove', (e) => {
   if ((dx*dx + dy*dy) > 36) { // moved > 6px
     clearTimeout(longPressTimer);
     longPressTimer = null;
-    longPressTarget = null;
+    
   }
 });
 
@@ -225,99 +248,70 @@ canvas.addEventListener('pointermove', (e) => {
       clearTimeout(longPressTimer);
       longPressTimer = null;
     }
-    longPressTarget = null;
+    
   });
 });
 
-// Compact pixelated font - 5x7 characters stored as bit patterns
-// Each character is 5 pixels wide, 7 pixels tall
-// Each row is stored as a 5-bit number (0-31)
-const font = {
-  // Numbers 0-9
-  '0': [14,17,19,21,25,17,14],
-  '1': [4,12,4,4,4,4,14],
-  '2': [14,17,1,2,4,8,31],
-  '3': [14,17,1,6,1,17,14],
-  '4': [2,6,10,18,31,2,2],
-  '5': [31,16,30,1,1,17,14],
-  '6': [6,8,16,30,17,17,14],
-  '7': [31,1,2,4,8,16,16],
-  '8': [14,17,17,14,17,17,14],
-  '9': [14,17,17,15,1,2,12],
-  
-  // Letters A-Z
-  'A': [14,17,17,31,17,17,17],
-  'B': [30,17,17,30,17,17,30],
-  'C': [14,17,16,16,16,17,14],
-  'D': [28,18,17,17,17,18,28],
-  'E': [31,16,16,30,16,16,31],
-  'F': [31,16,16,30,16,16,16],
-  'G': [14,17,16,23,17,17,15],
-  'H': [17,17,17,31,17,17,17],
-  'I': [14,4,4,4,4,4,14],
-  'J': [7,2,2,2,2,18,12],
-  'K': [17,18,20,24,20,18,17],
-  'L': [16,16,16,16,16,16,31],
-  'M': [17,27,21,21,17,17,17],
-  'N': [17,25,21,19,17,17,17],
-  'O': [14,17,17,17,17,17,14],
-  'P': [30,17,17,30,16,16,16],
-  'Q': [14,17,17,17,21,18,13],
-  'R': [30,17,17,30,20,18,17],
-  'S': [15,16,16,14,1,1,30],
-  'T': [31,4,4,4,4,4,4],
-  'U': [17,17,17,17,17,17,14],
-  'V': [17,17,17,17,17,10,4],
-  'W': [17,17,17,21,21,21,10],
-  'X': [17,17,10,4,10,17,17],
-  'Y': [17,17,17,10,4,4,4],
-  'Z': [31,1,2,4,8,16,31],
-  
-  // Card suits
-  '♠': [4,14,31,31,14,4,14],  // Spades
-  '♥': [0,10,31,31,14,4,0],   // Hearts
-  '♦': [0,4,14,31,14,4,0],    // Diamonds
-  '♣': [0,14,31,14,31,4,14]   // Clubs
-};
+// Font spritesheet renderer (5x7 glyphs)
+const GLYPH_W = 5, GLYPH_H = 7, GLYPH_SPACE = 1;
+let _fontBuf = null, _fontBufCtx = null, _fontBufW = 0, _fontBufH = 0;
 
-// Function to draw a character at x,y position with given color
-function drawChar(char, x, y, color = '#fff', scale = 1, context = ctx) {
-  const pattern = font[char.toUpperCase()];
-  if (!pattern) return x + 6 * scale; // Return next x position for unknown chars
-  
-  context.fillStyle = color;
-  
-  for (let row = 0; row < 7; row++) {
-    const bits = pattern[row];
-    for (let col = 0; col < 5; col++) {
-      if (bits & (1 << (4 - col))) { // Check if bit is set (from left to right)
-        context.fillRect(x + col * scale, y + row * scale, scale, scale);
-      }
-    }
-  }
-  
-  return x + 6 * scale; // Return next x position (5 pixels + 1 space)
+function glyphIndex(ch) {
+  if (!ch) return -1;
+  const up = ch.toUpperCase();
+  // 0-25: A-Z
+  if (up >= 'A' && up <= 'Z') return up.charCodeAt(0) - 65;
+  // 26-35: 0-9
+  if (ch >= '0' && ch <= '9') return 26 + (ch.charCodeAt(0) - 48);
+  // 36: ♠, 37: ♣, 38: ♥, 39: ♦
+  if (ch === '♠') return 36;
+  if (ch === '♣') return 37;
+  if (ch === '♥') return 38;
+  if (ch === '♦') return 39;
+  return -1;
 }
 
-// Function to draw text string
+function drawChar(char, x, y, color = '#fff', scale = 1, context = ctx) {
+  const idx = glyphIndex(char);
+  const charW = (GLYPH_W + GLYPH_SPACE) * scale;
+  if (idx < 0) return x + charW;
+  const sw = GLYPH_W, sh = GLYPH_H;
+  const dw = sw * scale, dh = sh * scale;
+  const sx = idx * GLYPH_W;
+  // Prepare/reuse offscreen buffer
+  if (!_fontBuf || _fontBufW !== dw || _fontBufH !== dh) {
+    _fontBufW = dw; _fontBufH = dh;
+    _fontBuf = document.createElement('canvas');
+    _fontBuf.width = dw; _fontBuf.height = dh;
+    _fontBufCtx = _fontBuf.getContext('2d');
+    _fontBufCtx.imageSmoothingEnabled = false;
+  } else {
+    _fontBufCtx.clearRect(0, 0, _fontBufW, _fontBufH);
+  }
+  // Draw glyph then tint via source-in
+  _fontBufCtx.globalCompositeOperation = 'source-over';
+  _fontBufCtx.drawImage(fontImg, sx, 0, sw, sh, 0, 0, dw, dh);
+  _fontBufCtx.globalCompositeOperation = 'source-in';
+  _fontBufCtx.fillStyle = color;
+  _fontBufCtx.fillRect(0, 0, dw, dh);
+  // Blit tinted glyph to destination
+  context.imageSmoothingEnabled = false;
+  context.drawImage(_fontBuf, x, y);
+  return x + charW;
+}
+
 function drawText(text, x, y, color = '#fff', scale = 1, alignment = 'left', context = ctx) {
   let startX = x;
-  
-  // Calculate text dimensions for center alignment
+  const charW = (GLYPH_W + GLYPH_SPACE) * scale;
+  const charH = GLYPH_H * scale;
   if (alignment === 'center') {
-    const textWidth = text.length * 6 * scale; // Each char is 6 pixels wide including space
-    const textHeight = 7 * scale; // Each char is 7 pixels tall
-    startX = x - textWidth / 2;
-    y = y - textHeight / 2;
+    startX = x - (text.length * charW) / 2;
+    y = y - charH / 2;
   }
-  
   let currentX = startX;
   for (let i = 0; i < text.length; i++) {
-    if (text[i] === ' ') {
-      currentX += 6 * scale; // Space width
-    } else {
-      currentX = drawChar(text[i], currentX, y, color, scale, context);
-    }
+    const ch = text[i];
+    if (ch === ' ') currentX += charW; else currentX = drawChar(ch, currentX, y, color, scale, context);
   }
   return currentX;
 }
@@ -347,22 +341,23 @@ let auxTitle = null;
 let auxScore = null;
 // Load cat sprite sheet (3 frames, 32x32 each, 96x32 total)
 import catUrl from './assets/cat.png';
+import fontUrl from './assets/font.png';
 const catImg = new Image();
 catImg.src = catUrl;
+const fontImg = new Image();
+fontImg.src = fontUrl;
 
 // Sprites consolidated in cat.png; mapping helpers
 const CAT_FRAME_W = 32;
 const CAT_FRAMES = {
   wag0: 0, wag1: 1, wag2: 2,     // tail wag
   pawMove0: 3, pawMove1: 4,      // right paw up animation
-  head: 5,                       // cat head for title
   paw: 6,                        // paw (no claws)
   pawClaw: 7,                    // paw with claws
   scratch: 8                     // scratch marks
 };
 function catFrameCount() { return (catImg && catImg.naturalWidth > 0) ? Math.floor(catImg.naturalWidth / CAT_FRAME_W) : 0; }
 function frameOrClamp(i) { const n = catFrameCount(); return n ? Math.max(0, Math.min(n - 1, i)) : 0; }
-function catHeadFrame() { return frameOrClamp(CAT_FRAMES.head); }
 function catScratchFrame() { return frameOrClamp(CAT_FRAMES.scratch); }
 function catPawClawsFrame() { return frameOrClamp(CAT_FRAMES.pawClaw); }
 function catPawFrame() { return frameOrClamp(CAT_FRAMES.paw); }
@@ -484,8 +479,9 @@ const dealCards = () => {
       const handY = canvas.height - 80;
       
       setTimeout(() => {
+        zzfx(...deal);
         card.moveTo(handX, handY, 400, 'easeOut', () => {
-          console.log(`Card ${card.value}${card.suit} dealt to hand`);
+          
         });
       }, i * 100);
       
@@ -511,10 +507,9 @@ const playCard = (card) => {
     // Animate to combo row
     const comboX = (canvas.width / 2) + ((comboRow.length - 1) - 2) * 50 - 20;
     const comboY = 10;
-    
+
+    zzfx(...playCardFx);
     card.moveTo(comboX, comboY, 300, 'easeInOut', () => {
-      console.log(`Card ${card.value}${card.suit} played to combo (${comboRow.length}/5)`);
-      
       // Check if combo row is full
       if (comboRow.length === 5) {
         // Draw replacement card for 5th card before evaluating
@@ -577,9 +572,10 @@ const drawNewCard = (removedPosition) => {
       const rightmostX = (canvas.width / 2) + (4 - 2) * 50 - 20; // position 4
       const handY = canvas.height - 80;
       
+      zzfx(...deal);
       // Add a little bounce effect when card arrives
       newCard.moveTo(rightmostX, handY, 400, 'easeOut', () => {
-        console.log(`New card ${newCard.value}${newCard.suit} drawn to rightmost position`);
+        
       })
       .scaleTo(1.1, 150, 'easeOut', () => {
         newCard.scaleTo(1, 150, 'easeOut');
@@ -599,12 +595,12 @@ const drawNewCard = (removedPosition) => {
     
   } else {
     // No cards left in deck - just slide cards left to close gap
-    console.log('No cards left in deck to draw');
+    
     slideHandCardsLeft(removedPosition);
     
     // Check if we need to end the game early
     if (playerHand.length + comboRow.length < 5) {
-      console.log('Not enough cards to complete another combo');
+      
       // Will be handled by the next combo evaluation
     }
   }
@@ -737,12 +733,9 @@ function ensureAuxTitle() {
     auxTitle.y = Math.max(4, catSprite ? catSprite.y - 18 : 12);
     return;
   }
-  const titleText = 'PO KER MYSTERIO ';
+  const titleText = 'POKER MYSTERIO';
   const scale = 2; // pixel font scale
   const charW = 6 * scale; // 12
-  const charH = 7 * scale; // 14
-  const headW = charW; // fit into same width
-  const headH = charW; // square, ~12px tall
 
   auxTitle = createAnimatable({
     x: 0, // computed in render for centering
@@ -762,18 +755,7 @@ function ensureAuxTitle() {
       const y = self.y;
       for (let i = 0; i < self.text.length; i++) {
         const ch = self.text[i];
-        if ((ch === 'O' || ch === 'o') && catFrameCount() > CAT_FRAMES.head) {
-          // draw head frame at fixed index
-          const headIndex = catHeadFrame();
-          rctx.save();
-          rctx.translate(-x-2, -y-7);
-          rctx.scale(2, 2);
-          rctx.drawImage(catImg, headIndex * 32, 0, 32, 32,
-            x, y + Math.floor((charH - headH) / 2), headW, headH);
-          rctx.restore();
-        } else if (ch === ' ') {
-          // space, nothing to draw
-        } else {
+        if (ch !== ' ') {
           drawChar(ch, x, y, '#ff0', scale, rctx);
         }
         x += charW;
@@ -809,11 +791,7 @@ function ensureAuxScore() {
   auxObjects.push(auxScore);
 }
 
-function removeCatSprite() {
-  if (!catSprite) return;
-  const i = auxObjects.indexOf(catSprite);
-  if (i > -1) auxObjects.splice(i, 1);
-}
+// removeCatSprite currently unused (cat persists across states)
 
 function showAbilityPopup(kind, fromHover = false) {
   // Replace any existing popup first
@@ -1083,7 +1061,7 @@ const evaluateCombo = () => {
   
   const finalScore = Math.max(0, Math.round(result.score * (nextScoreMultiplier || 1)));
   score += finalScore;
-  console.log(`${result.name} - ${finalScore} points! Total: ${score}`);
+  
   // Clear temporary multiplier after use
   nextScoreMultiplier = 1;
   
@@ -1099,6 +1077,7 @@ const evaluateCombo = () => {
   // Animate result text with removal after fade
   resultText.rotation = Math.PI / 2
   resultText.scale = 0.1;
+  zzfx(...handFx);
   resultText.scaleTo(3, 500, 'easeOut').rotateTo(0, 500, 'easeOut', obj => {
     setTimeout(() => {
       obj.scaleTo(0, 300, 'easeOut', () => {
@@ -1144,6 +1123,7 @@ const evaluateCombo = () => {
   setTimeout(() => {
     comboRow.forEach((card, i) => {
       setTimeout(() => {
+        zzfx(...clearCardFx);
         card.moveTo(-100, card.y - (i * 30), 400, 'easeIn', () => {
           const index = gameObjects.indexOf(card);
           if (index > -1) gameObjects.splice(index, 1);
@@ -1172,7 +1152,7 @@ const evaluateCombo = () => {
           highScore = score;
           localStorage.setItem('pokerHighScore', highScore.toString());
         }
-        console.log(`Game over! Total cards available: ${totalAvailableCards}`);
+        
       }
     }, 1000);
     
@@ -1458,7 +1438,6 @@ function createCatSprite(x, y, size = 32) {
     _wagging: false,
     _wagElapsed: 0,
     _wagDuration: 0,
-    _wagPhase: 1, // 0,1,2 -> left,center,right (start center)
     _wagSpeed: 120, // ms per step
     // paw raise animation (frames 3,4)
     _pawAnimating: false,
@@ -1470,7 +1449,6 @@ function createCatSprite(x, y, size = 32) {
       this._wagging = true;
       this._wagElapsed = 0;
       this._wagDuration = duration;
-      this._wagPhase = 0;
       return this;
     },
     pawUp: function(duration = 500) {
@@ -1486,12 +1464,8 @@ function createCatSprite(x, y, size = 32) {
         self._wagElapsed += dt;
         if (self._wagElapsed >= self._wagDuration) {
           self._wagging = false;
-          self._wagPhase = 1; // center
         } else {
-          // step phase
-          const step = Math.floor(self._wagElapsed / self._wagSpeed) % 4; // 0..3
-          // 0,1,2,3 -> left, center, right, center
-          self._wagPhase = [0,1,2,1][step];
+          // keep elapsed running; frame chosen in render
         }
       }
       if (self._pawAnimating) {
@@ -1512,8 +1486,14 @@ function createCatSprite(x, y, size = 32) {
         const step = Math.floor(self._pawElapsed / self._pawSpeed) % 4; // 0..3
         frameIndex = frameOrClamp([CAT_FRAMES.pawMove0, CAT_FRAMES.pawMove1, CAT_FRAMES.pawMove0, CAT_FRAMES.wag1][step]);
       } else {
-        // tail wag frames 0..2
-        frameIndex = frameOrClamp([CAT_FRAMES.wag0, CAT_FRAMES.wag1, CAT_FRAMES.wag2][self._wagPhase] || CAT_FRAMES.wag1);
+        // tail wag cycle (includes frame 0)
+        if (self._wagging) {
+          const cycle = [CAT_FRAMES.wag0, CAT_FRAMES.wag1, CAT_FRAMES.wag2, CAT_FRAMES.wag1];
+          const step = Math.floor(self._wagElapsed / self._wagSpeed) % cycle.length;
+          frameIndex = frameOrClamp(cycle[step]);
+        } else {
+          frameIndex = frameOrClamp(CAT_FRAMES.wag1); // neutral center
+        }
       }
       const sx = frameIndex * frameW;
       const sy = 0;
@@ -1522,8 +1502,7 @@ function createCatSprite(x, y, size = 32) {
     }
   });
 
-  // Start neutral tail
-  cat._wagPhase = 1;
+  // Start neutral tail (center)
   return cat;
 }
 
@@ -1912,7 +1891,7 @@ function gameLoop(currentTime) {
 }
 
 // Start the game loop
-console.log('Starting Poker Mysterio...');
+ 
 
 // Responsive scaling: size canvases based on viewport and orientation
 function resizeCanvases() {
@@ -1967,13 +1946,13 @@ setupPWA();
 // Defer starting until spritesheet is loaded
 let booted = false;
 function waitForSprites() {
-  return new Promise((resolve) => {
-    if (catImg.complete && catImg.naturalWidth > 0) return resolve();
-    const onLoad = () => resolve();
-    const onError = () => resolve();
-    catImg.addEventListener('load', onLoad, { once: true });
-    catImg.addEventListener('error', onError, { once: true });
+  const waitImage = (img) => new Promise((resolve) => {
+    if (img.complete && img.naturalWidth > 0) return resolve();
+    const done = () => resolve();
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
   });
+  return Promise.all([waitImage(catImg), waitImage(fontImg)]);
 }
 
 (async function boot() {

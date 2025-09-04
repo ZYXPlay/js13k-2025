@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode js13k",
     "build": "vite build",
     "build:js13k": "vite build --mode js13k",
     "preview": "vite preview"
