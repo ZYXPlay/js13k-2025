@@ -1107,7 +1107,7 @@ const evaluateCombo = () => {
   // Fireworks for good hands
   if (result.score >= 500) {
     if (catSprite && catSprite.wag) catSprite.wag(1200);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 7; i++) {
       setTimeout(() => {
         particleSystem.burst(
           canvas.width / 2 + (Math.random() - 0.5) * 200,
