@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => {
         folderPath: path.resolve(__dirname, 'dist'),
         outPath: path.resolve(__dirname),
         zipName: 'game.zip',
-        enabled: env.NODE_ENV === 'production' ? true : false
+        enabled: env.NODE_ENV === 'production' ? true : false,
+        withoutMainFolder: true,
       })
     ],
     publicDir: isJs13k ? false : 'public',
