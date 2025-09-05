@@ -1,6 +1,7 @@
 import song from './song';
 import Player from './player';
 import { zzfx } from './zzfx';
+import { powerUp, deal, playCardFx, clearCardFx, handFx,overFx, clickFx } from './sounds';
 
 const player = new Player();
 let genDone = false;
@@ -25,13 +26,6 @@ setInterval(function () {
 const audio = document.createElement("audio");
 audio.autoplay = true;
 audio.loop = true;
-const powerUp = [,,355,.03,.23,.19,1,2.1,6,-3,,,,,14,,,.83,.22]; // Powerup 8
-const deal = [,,341,.04,.04,.09,,2,,68,,,,.4,,,,.71]; // Deal 8
-const playCardFx = [,,280,.05,.05,.07,,2.6,,9,,,,.5,,,,.9,.01];
-const clearCardFx = [,,497,.05,.04,.11,1,1.6,,,100,.1,,1,,,,.4,.03];
-const handFx = [,0,261.6256,.02,.2,.08,,1.9,,,350,.07,.22,,,.1,.08,.9,.23];
-const overFx = [1.1,,522,.01,.01,.01,1,4.9,,-36,,,,,,,,.71,.02,,-1073];
-const clickFx = [,,305,.01,.02,.26,1,.5,,,286,.08,,,,,,.93,.01];
 
 const body = document.body;
 body.appendChild(audio);
@@ -48,6 +42,9 @@ const ctx = canvas.getContext('2d');
 // Auxiliary canvas for UI / abilities
 const canvasAux = document.getElementById('canvas-aux');
 const ctxAux = canvasAux.getContext('2d');
+// Background plasma canvas
+const canvasBg = document.getElementById('canvas-bg');
+const ctxBg = canvasBg.getContext('2d');
 
 // Disable image smoothing for all contexts
 ctx.imageSmoothingEnabled = false;
@@ -64,6 +61,8 @@ ctxAux.mozImageSmoothingEnabled = false; // Firefox
 ctxAux.webkitImageSmoothingEnabled = false; // Safari
 ctxAux.msImageSmoothingEnabled = false; // IE
 ctxAux.oImageSmoothingEnabled = false; // Opera
+// Background
+ctxBg.imageSmoothingEnabled = false;
 
 // Input handling
 let mousePos = { x: 0, y: 0 };
@@ -1819,6 +1818,8 @@ function update(deltaTime) {
 
 // Game render function
 function render() {
+  // Render plasma background (low-res canvas scaled by CSS)
+  renderPlasma(gameTime);
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctxAux.clearRect(0, 0, canvasAux.width, canvasAux.height);
@@ -1893,6 +1894,38 @@ function gameLoop(currentTime) {
   
   // Request next frame
   requestAnimationFrame(gameLoop);
+}
+
+// === Plasma background ===
+function renderPlasma(t) {
+  if (!canvasBg) return;
+  const w = canvasBg.width | 0;
+  const h = canvasBg.height | 0;
+  const img = ctxBg.getImageData(0, 0, w, h);
+  const data = img.data;
+  const time = t * 0.00016;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const nx = x / w, ny = y / h;
+      const v = (
+        Math.sin((nx * 4) * Math.PI) +
+        Math.sin((ny * 4 - time * 1.2) * Math.PI) +
+        Math.sin(((nx + ny) * 3 + time * 0.7) * Math.PI)
+      ) / (3 * (Math.cos(time * 3) + 2));
+      // Quantize to 8-color palette
+      let u = (v + 1) * 0.5; // 0..1
+      u = ((u * 7 + 0.5) | 0) / 7; // 8 discrete steps
+      // Map to teal/green palette endpoints
+      const r0=5, g0=40, b0=28;   // dark
+      const r1=20, g1=120, b1=86; // light
+      data[i+0] = (r0 + (r1 - r0) * u) | 0;
+      data[i+1] = (g0 + (g1 - g0) * u) | 0;
+      data[i+2] = (b0 + (b1 - b0) * u) | 0;
+      data[i+3] = 255;
+    }
+  }
+  ctxBg.putImageData(img, 0, 0);
 }
 
 // Start the game loop
