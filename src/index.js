@@ -1,7 +1,7 @@
 import song from './song';
 import Player from './player';
 import { zzfx } from './zzfx';
-import { cardFx, handFx, overFx, clickFx } from './sounds';
+import { cardFx, handFx, overFx, clickFx, fireworkFx } from './sounds';
 
 const player = new Player();
 let genDone = false;
@@ -681,7 +681,7 @@ function updateAbilityButtons() {
     btn.alpha = n > 0 ? 1 : 0.5;
     btn.cacheImage();
   };
-  set(abilityButtons.pounce, 'POUND  ', abilities.pounce);
+  set(abilityButtons.pounce, 'POUNCE ', abilities.pounce);
   set(abilityButtons.purr, 'PURR   ', abilities.purr);
   set(abilityButtons.hiss, 'HISS   ', abilities.hiss);
   set(abilityButtons.scratch, 'SCRATCH', abilities.scratch);
@@ -731,8 +731,8 @@ function ensureAuxTitle() {
   auxTitle = createAnimatable({
     x: 0, // computed in render for centering
     y: Math.max(4, catSprite ? catSprite.y - 18 : 12),
-    text: 'POKER MYSTERIO',
-    scale: 3,
+    text: 'POKER',
+    scale: 5,
     alpha: 1,
     rotation: 0,
     clickable: false,
@@ -741,10 +741,13 @@ function ensureAuxTitle() {
     render: (self) => {
       const rctx = self.context || ctxAux;
       // compute total width (every char counts as one cell)
-      drawText(self.text, rctx.canvas.width / 2, self.y, '#ff0', self.scale, 'center', rctx);
+      drawText(self.text, rctx.canvas.width / 2 + 1, self.y - 19, '#000', self.scale, 'center', rctx);
+      drawText(self.text, rctx.canvas.width / 2, self.y - 20, '#ff0', self.scale, 'center', rctx);
+      drawText('MYSTERIO', rctx.canvas.width / 2 + 1, self.y + 11, '#000', 3, 'center', rctx);
+      drawText('MYSTERIO', rctx.canvas.width / 2, self.y + 10, '#f00', 3, 'center', rctx);
       if (gameState === 'title') {
-        drawText('Game by Vonloxx', rctx.canvas.width / 2, self.y + 130, '#fff', 2, 'center', rctx);
-        drawText('Music by Esa Ruoho', rctx.canvas.width / 2, self.y + 150, '#fff', 2, 'center', rctx);
+        drawText('Game by Marco Fernandes', rctx.canvas.width / 2, self.y + 130, '#fff', 1, 'center', rctx);
+        drawText('Music by Esa Ruoho', rctx.canvas.width / 2, self.y + 140, '#fff', 1, 'center', rctx);
         drawText('Tap to start', rctx.canvas.width / 2, self.y + 180, '#fff', 2, 'center', rctx);
       }
     }
@@ -934,9 +937,11 @@ function performScratch() {
 function flashText(text, x, y, color = '#fff') {
   const t = createText(x - (text.length * 3), y, text, color, 1, 'left');
   gameObjects.push(t);
-  t.fadeTo(0, 2000, 'easeOut', () => {
-    const i = gameObjects.indexOf(t);
-    if (i > -1) gameObjects.splice(i, 1);
+  t.moveTo(t.x, t.y - 6, 1000, 'easeOut', t => {
+    t.fadeTo(0, 1000, 'easeOut', () => {
+      const i = gameObjects.indexOf(t);
+      if (i > -1) gameObjects.splice(i, 1);
+    });
   });
 }
 
@@ -1052,27 +1057,28 @@ const evaluateCombo = () => {
   // Show result text
   const textLength = result.name.length * 6;
   const resultText = createText(canvas.width / 2, canvas.height / 2,
-    `${result.name}!`, '#ff0', 1, 'left');
-  const scoreText = createText(canvas.width / 2, canvas.height / 2 + 20,
-    `+${finalScore}`, '#0f0', 1, 'left');
+    `${result.name}!`, '#ff0', 1, 'center');
+  const scoreText = createText(canvas.width / 2, 20,
+    `+${finalScore}`, '#0f0', 1, 'center');
 
   gameObjects.push(resultText, scoreText);
 
   // Animate result text with removal after fade
-  resultText.rotation = Math.PI / 2
+  resultText.rotation = Math.PI / 2;
   resultText.scale = 1;
   zzfx(...handFx);
-  resultText.scaleTo(3, 500, 'easeOut').rotateTo(0, 500, 'easeOut', obj => {
+  resultText.scaleTo(3, 750, 'easeOut').rotateTo(0, 750, 'easeOut', obj => {
     setTimeout(() => {
-      obj.scaleTo(0, 300, 'easeOut', () => {
+      obj.fadeTo(0, 300, 'easeOut').scaleTo(10, 300, 'easeOut', () => {
         // Remove from gameObjects after fade completes
         const index = gameObjects.indexOf(resultText);
         if (index > -1) gameObjects.splice(index, 1);
       });
-    }, 300);
+    }, 500);
   });
 
-  scoreText.moveTo(scoreText.x, scoreText.y - 30, 1000, 'easeOut').fadeTo(0, 2000, 'easeOut', () => {
+  scoreText.scaleTo(3, 0, 'easeOut');
+  scoreText.moveTo(0, canvas.height / 2, 2000, 'easeOut').fadeTo(0, 1000, 'easeOut', () => {
     // Remove from gameObjects after fade completes
     const index = gameObjects.indexOf(scoreText);
     if (index > -1) gameObjects.splice(index, 1);
@@ -1099,6 +1105,7 @@ const evaluateCombo = () => {
             life: 2000
           }
         );
+        zzfx(...fireworkFx);
       }, i * 300);
     }
   }
@@ -1108,11 +1115,11 @@ const evaluateCombo = () => {
     comboRow.forEach((card, i) => {
       setTimeout(() => {
         zzfx(...cardFx);
-        card.moveTo(-100, card.y - (i * 30), 400, 'easeIn', () => {
+        card.moveTo(296, card.y + (i * 10), 400, 'easeIn', () => {
           const index = gameObjects.indexOf(card);
           if (index > -1) gameObjects.splice(index, 1);
         })
-          .rotateTo(-Math.PI / 6, 200, 'easeOut', card => {
+          .rotateTo(Math.PI / 6, 200, 'easeOut', card => {
             card.rotateTo(0, 200, 'easeOut');
           });
       }, 100 * i);
@@ -1356,24 +1363,29 @@ const createCard = (x, y, suit, value) => {
 
 // Animated text object factory
 const createText = (x, y, text, color = '#fff', scale = 1, alignment = 'left') => {
-  // Calculate text dimensions for caching
-  const textWidth = text.length * 6 * scale;
-  const textHeight = 7 * scale;
+
+  // Use actual glyph sizes for width/height
+  const charW = (GLYPH_W + GLYPH_SPACE) * scale;
+  const textWidth = text.length * charW;
+  const textHeight = GLYPH_H * scale;
+  let cacheW = textWidth, offset = 0;
+  if (alignment === 'right') cacheW = textWidth * 2, offset = textWidth;
 
   const textObj = createAnimatable({
     x, y, text, color,
-    scale: scale,
+    scale,
     alpha: 1,
     rotation: 0,
-    alignment: alignment,
+    alignment,
     w: textWidth,
     h: textHeight,
-    cacheWidth: textWidth,
+    cacheWidth: cacheW,
     cacheHeight: textHeight,
 
-    // Render method for caching
     renderToCache: (self, cacheCtx) => {
-      drawText(self.text, 0, 0, self.color, scale, alignment, cacheCtx);
+      let tx = 0;
+      if (alignment === 'right') tx = cacheW/2-offset;
+      drawText(self.text, tx, 0, self.color, scale, 'left', cacheCtx);
     },
 
     update: (self, dt) => {
@@ -1381,25 +1393,22 @@ const createText = (x, y, text, color = '#fff', scale = 1, alignment = 'left') =
     },
 
     render: (self) => {
-      // Use cached rendering for crisp scaling
       self.renderCached((self) => {
-        // Fallback rendering
         ctx.save();
         ctx.globalAlpha = self.alpha;
         ctx.translate(self.x, self.y);
         ctx.scale(self.scale, self.scale);
         ctx.rotate(self.rotation);
-
-        drawText(self.text, 0, 0, self.color, 1, self.alignment);
-
+        let tx = 0;
+        if (self.alignment === 'center') tx = -self.text.length * (GLYPH_W + GLYPH_SPACE) * 0.5;
+        else if (self.alignment === 'right') tx = -self.text.length * (GLYPH_W + GLYPH_SPACE);
+        drawText(self.text, tx, 0, self.color, 1, 'left');
         ctx.restore();
       });
     }
   });
 
-  // Cache the text image immediately
   textObj.cacheImage();
-
   return textObj;
 };
 
@@ -1830,16 +1839,16 @@ function render() {
     }
 
     // Game UI (main canvas): only non-score info
-    const hudX = deckPosition.x + 60;
-    const hudY = deckPosition.y + 20;
-    if (nextScoreMultiplier < 1) {
-      drawText('CURSE -20% NEXT', hudX, hudY + 10, '#f80', 1);
-    }
+    // const hudX = deckPosition.x + 60;
+    // const hudY = deckPosition.y + 20;
+    // if (nextScoreMultiplier < 1) {
+    //   drawText('CURSE -20% NEXT', hudX, hudY + 10, '#f80', 1);
+    // }
 
     // Instructions
-    if (gameState === 'playing' && comboRow.length === 0) {
-      drawText('TAP CARDS TO PLAY', canvas.width / 2, canvas.height - 28, '#888', 1, 'center');
-    }
+    // if (gameState === 'playing' && comboRow.length === 0) {
+    //   drawText('TAP CARDS TO PLAY', canvas.width / 2, canvas.height - 28, '#888', 1, 'center');
+    // }
     if (gameState === 'playing' && abilityState.pounceSelecting) {
       drawText('SELECT A COMBO CARD', canvas.width / 2, 10, '#ff0', 1, 'center');
     }
