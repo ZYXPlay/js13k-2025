@@ -741,8 +741,8 @@ function ensureAuxTitle() {
     render: (self) => {
       const rctx = self.context || ctxAux;
       // compute total width (every char counts as one cell)
-      drawText(self.text, rctx.canvas.width / 2 + 1, self.y - 19, '#000', self.scale, 'center', rctx);
-      drawText(self.text, rctx.canvas.width / 2, self.y - 20, '#ff0', self.scale, 'center', rctx);
+      drawText(self.text, rctx.canvas.width / 2 + 1, self.y - 29, '#000', self.scale, 'center', rctx);
+      drawText(self.text, rctx.canvas.width / 2, self.y - 30, '#ff0', self.scale, 'center', rctx);
       drawText('MYSTERIO', rctx.canvas.width / 2 + 1, self.y + 11, '#000', 3, 'center', rctx);
       drawText('MYSTERIO', rctx.canvas.width / 2, self.y + 10, '#f00', 3, 'center', rctx);
       if (gameState === 'title') {
@@ -872,9 +872,11 @@ function performPurr() {
   gameObjects.push(peekCard);
   flashText('PURR', deckPosition.x + 66, deckPosition.y - 20, '#0f0');
   // Float up and fade
-  peekCard.moveTo(peekCard.x, peekCard.y - 20, 700, 'easeOut').fadeTo(0, 700, 'easeOut', () => {
-    const i = gameObjects.indexOf(peekCard);
-    if (i > -1) gameObjects.splice(i, 1);
+  peekCard.moveTo(peekCard.x, peekCard.y - 20, 1400, 'easeOut', peekCard => {
+    peekCard.fadeTo(0, 700, 'easeOut', () => {
+      const i = gameObjects.indexOf(peekCard);
+      if (i > -1) gameObjects.splice(i, 1);
+    });
   });
 }
 
