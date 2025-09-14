@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
         withoutMainFolder: true,
       })
     ],
+    base: '',
     publicDir: isJs13k ? false : 'public',
     build: {
       minify: 'terser',
